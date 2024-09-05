@@ -1,6 +1,6 @@
 import os
 from groq import Groq
-
+import fulltext
 # parse command line args
 import argparse
 parser = argparse.ArgumentParser()
@@ -14,8 +14,11 @@ client = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
 )
 
-with open(args.filename) as f:
-    text = f.read()
+try:
+    text = fulltext.get(args.filename)
+except Exception as e:
+    print(f"Error reading the file: {e}")
+    exit(1)
 
 chat_completion = client.chat.completions.create(
     messages=[
