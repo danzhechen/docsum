@@ -1,4 +1,4 @@
-# docsum ![](https://github.com/danzhechen/docsum/workflows/Python%20application/badge.svg)
+# docsum ![](https://github.com/danzhechen/docsum/workflows/tests/badge.svg)
 
 ## Overview
 
