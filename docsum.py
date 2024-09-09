@@ -5,6 +5,7 @@ import time
 import argparse
 import chardet
 import re
+import time
 
 # Define the chunk size limit (adjust this value as needed)
 CHUNK_SIZE_LIMIT = 5000  # Maximum number of words per chunk
@@ -18,35 +19,49 @@ def split_document_into_chunks(text, chunk_size=CHUNK_SIZE_LIMIT):
     chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
     return chunks
 
-def summarize_text(client, chunk):
+def summarize_text(client, chunk, retries=3, delay=5):
     """
-    Function to summarize a chunk of text using the LLM API.
+    Function to summarize a chunk of text using the LLM API with retry logic.
+    If the API call fails, it retries up to 'retries' times with exponential backoff.
     """
-    chat_completion = client.chat.completions.create(
-        messages=[
-            {
-                "role": "system",
-                "content": "Summarize the input text below. Limit the summary to 1 sentence and use a 1st grade reading level.",
-            },
-            {
-                "role": "user",
-                "content": chunk,
-            }
-        ],
-        model="llama3-8b-8192",
-    )
+    attempt = 0
+    while attempt < retries:
+        try:
+            # Try to call the Groq API
+            chat_completion = client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "Summarize the input text below. Limit the summary to 1 sentence and use a 1st grade reading level.",
+                    },
+                    {
+                        "role": "user",
+                        "content": chunk,
+                    }
+                ],
+                model="llama3-8b-8192",
+            )
+            # Return the result if successful
+            return chat_completion.choices[0].message.content
 
-    return chat_completion.choices[0].message.content
+        except Exception as e:
+            # Print error and retry after delay
+            print(f"Error during summarization: {e}")
+            attempt += 1
+            if attempt < retries:
+                print(f"Retrying... attempt {attempt}/{retries}")
+                time.sleep(delay * (2 ** attempt))  # Exponential backoff
+            else:
+                print(f"Failed after {retries} retries.")
+                raise e  # Reraise the error after all retries fail
 
 def clean_final_summary(summary):
     """
     Function to remove any sentence starting with 'Here is a summary of the text'
     or any variation of this sentence.
     """
-    # Remove any sentence starting with "Here is a summary of the text..."
-    summary = re.sub(r"(?i)here is a summary of the.*?:", "", summary)
+    summary = re.sub(r"(?i)here('?s| is) a (1-sentence )?summary of (the article|the text|the input).*?:", "", summary)
 
-    # Return the cleaned summary
     return summary.strip()
 
 def evaluate_and_summarize(client, summary, max_char_limit=MAX_CHAR_LIMIT):
@@ -106,11 +121,9 @@ if __name__ == '__main__':
     # After all chunks are summarized, join them into one final summary
     final_summary = f"This is a summary of the file '{args.filename}': " + " ".join(summaries)
 
-    # Clean the final summary to remove unwanted phrases
     final_summary = clean_final_summary(final_summary)
 
     # If the final summary exceeds the max character limit, keep summarizing it until it is under the limit
     # final_summary = evaluate_and_summarize(client, final_summary, MAX_CHAR_LIMIT)
 
-    # Print the final summary
     print(final_summary)
