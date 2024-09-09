@@ -7,7 +7,7 @@ import chardet
 import re
 
 # Define the chunk size limit (adjust this value as needed)
-CHUNK_SIZE_LIMIT = 7000  # Maximum number of words per chunk
+CHUNK_SIZE_LIMIT = 6000  # Maximum number of words per chunk
 MAX_CHAR_LIMIT = 30000  # Maximum number of characters for the final summary
 
 def split_document_into_chunks(text, chunk_size=CHUNK_SIZE_LIMIT):
